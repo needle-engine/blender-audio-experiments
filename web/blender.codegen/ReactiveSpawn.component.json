@@ -1,0 +1,1 @@
+{    "ReactiveSpawn": {        "prefab": {            "type": "obj"        },        "awake": {            "type": "fn"        },        "update": {            "type": "fn"        }    }}
