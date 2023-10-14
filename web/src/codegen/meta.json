@@ -1,5 +1,5 @@
 {
-    "gzip": true,
+    "gzip": false,
     "useRapier": true,
     "license": null,
     "generator": "Needle Engine for Blender 0.31.1",
