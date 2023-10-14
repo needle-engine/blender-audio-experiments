@@ -1,0 +1,1 @@
+{    "ReactiveAttraction": {        "target": {            "type": "obj"        },        "dragFactor": {            "type": "float",            "value": 20        },        "start": {            "type": "fn"        },        "update": {            "type": "fn"        }    }}

@@ -1,10 +1,10 @@
 {
-    "gzip": false,
+    "gzip": true,
     "useRapier": true,
     "license": null,
     "generator": "Needle Engine for Blender 0.31.1",
     "meta": {
-        "title": "02 falling balls",
+        "title": "03 attraction",
         "description": "Built with Needle Engine for Blender",
         "image": "include/poster.webp"
     }

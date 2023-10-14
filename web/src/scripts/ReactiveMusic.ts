@@ -1,5 +1,5 @@
 import { AudioSource, Behaviour, Collider, GameObject, Mathf, PhysicsMaterialCombine, Rigidbody, SphereCollider, serializable } from '@needle-tools/engine';
-import { AudioAnalyser, Color, Mesh, MeshStandardMaterial, Object3D } from 'three';
+import { AudioAnalyser, Color, Mesh, MeshStandardMaterial, Object3D, Vector3 } from 'three';
 
 export class ReactiveMusic extends Behaviour {
 
@@ -11,6 +11,9 @@ export class ReactiveMusic extends Behaviour {
     getValue(index: number) {
         if (index < 0 || index >= this.array.length) return 0;
         return this.array[index];
+    }
+    getValue01(index: number) {
+        return this.getValue(index) / 255;
     }
 
     constructor() {
@@ -74,7 +77,7 @@ export class ReactiveSpawn extends Behaviour {
             this._lastSpawn = this.context.time.time;
             const obj = GameObject.instantiate(this.prefab);
             if (!obj) return;
-            if(obj instanceof Mesh && Math.random() > .5) {
+            if (obj instanceof Mesh && Math.random() > .5) {
                 const mat = obj.material as MeshStandardMaterial;
                 obj.material = mat.clone();
                 obj.material.color = new Color(Math.random(), Math.random(), Math.random());
@@ -82,7 +85,7 @@ export class ReactiveSpawn extends Behaviour {
                 obj.material.emissiveIntensity = Math.random() * 10;
             }
             obj!.visible = true;
-            const s = val / 300;
+            const s = val / 255;
             obj.scale.multiplyScalar(s * s * s * 5);
             const spacing = .3 + s;
             obj.position.x += Mathf.remap(Math.random(), 0, 1, -1, 1) * spacing;
@@ -151,4 +154,53 @@ export class ReactiveSphere extends Behaviour {
             // }
         }
     }
+}
+
+
+
+export class ReactiveAttraction extends Behaviour {
+
+    @serializable(Object3D)
+    target?: Object3D;
+
+    @serializable()
+    dragFactor : number = 20;
+
+    private _rbs: Rigidbody[] = [];
+
+    start() {
+        for (const ch of this.gameObject.children) {
+            const rb = GameObject.getOrAddComponent(ch, Rigidbody);
+            this._rbs.push(rb);
+            rb.useGravity = false;
+            rb.mass = ch.scale.x;
+            const col = GameObject.getOrAddComponent(ch, SphereCollider);
+            col.radius = 1;
+        }
+    }
+
+    private _temp = new Vector3();
+    update(): void {
+        const val = ReactiveMusic.instance.getValue01(4);
+        if (val > .6) {
+            for (const rb of this._rbs) {
+                rb.drag = .5;
+                const rf = 5;
+                const rdx = Mathf.remap(Math.random(), 0, 1, -rf, rf);
+                const rdy = Mathf.remap(Math.random(), 0, 1, -rf, rf);
+                const rdz = Mathf.remap(Math.random(), 0, 1, -rf, rf);
+                this._temp.copy(this.target!.position)
+                this._temp.x += rdx;
+                this._temp.y += rdy;
+                this._temp.z += rdz;
+                const dir = this._temp.sub(rb.gameObject.position);
+                dir.normalize();
+                rb.applyImpulse(dir.multiplyScalar(val * 150 * rb.mass * .8));
+            }
+        }
+        else if (val <= .3) {
+            for (const rb of this._rbs) rb.drag += this.dragFactor * this.context.time.deltaTime;
+        }
+    }
+
 }
