@@ -1,4 +1,4 @@
-import { AudioSource, Behaviour, Collider, GameObject, Mathf, PhysicsMaterialCombine, Rigidbody, SphereCollider, serializable } from '@needle-tools/engine';
+import { AudioSource, Behaviour, Collider, GameObject, Mathf, PhysicsMaterial, PhysicsMaterialCombine, Rigidbody, SphereCollider, serializable } from '@needle-tools/engine';
 import { AudioAnalyser, Color, Mesh, MeshStandardMaterial, Object3D, Vector3 } from 'three';
 
 export class ReactiveMusic extends Behaviour {
@@ -166,23 +166,38 @@ export class ReactiveAttraction extends Behaviour {
     @serializable()
     dragFactor : number = 20;
 
+    @serializable()
+    massFactor : number = 5;
+
+    @serializable()
+    bouncyNess : number = .5;
+
     private _rbs: Rigidbody[] = [];
 
     start() {
+        const colPhysicsMaterial : PhysicsMaterial = {
+            bounceCombine: PhysicsMaterialCombine.Maximum,
+            bounciness: this.bouncyNess,
+            frictionCombine: PhysicsMaterialCombine.Maximum,
+            dynamicFriction: .1,
+            staticFriction: .1,
+        }
         for (const ch of this.gameObject.children) {
             const rb = GameObject.getOrAddComponent(ch, Rigidbody);
             this._rbs.push(rb);
             rb.useGravity = false;
-            rb.mass = ch.scale.x;
+            rb.autoMass = false
+            rb.mass = ch.scale.x * this.massFactor;
             const col = GameObject.getOrAddComponent(ch, SphereCollider);
             col.radius = 1;
+            col.sharedMaterial = colPhysicsMaterial
         }
     }
 
     private _temp = new Vector3();
     update(): void {
         const val = ReactiveMusic.instance.getValue01(4);
-        if (val > .6) {
+        if (val > .53) {
             for (const rb of this._rbs) {
                 rb.drag = .5;
                 const rf = 5;
@@ -195,7 +210,7 @@ export class ReactiveAttraction extends Behaviour {
                 this._temp.z += rdz;
                 const dir = this._temp.sub(rb.gameObject.position);
                 dir.normalize();
-                rb.applyImpulse(dir.multiplyScalar(val * 150 * rb.mass * .8));
+                rb.applyImpulse(dir.multiplyScalar(val * 55));
             }
         }
         else if (val <= .3) {
