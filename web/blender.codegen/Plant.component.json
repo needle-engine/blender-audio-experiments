@@ -1,1 +1,1 @@
-{    "Plant": {        "awake": {            "type": "fn"        },        "onEnable": {            "type": "fn"        },        "update": {            "type": "fn"        }    }}
+{    "Plant": {        "spawner": {            "type": "iaudiointerface"        },        "awake": {            "type": "fn"        },        "onEnable": {            "type": "fn"        },        "update": {            "type": "fn"        }    }}
