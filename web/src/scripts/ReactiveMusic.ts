@@ -271,8 +271,10 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
         for (const pf of this.prefabs) {
             if (!pf) continue;
             pf.visible = false;
-            pf.layers.disableAll();
-            pf.layers.set(2);
+            pf.traverseVisible((ch) => {
+                ch.layers.disableAll();
+                ch.layers.set(2);
+            });
         }
         this.worldPosition = new Vector3();
     }
@@ -311,8 +313,9 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
 
         // Gizmos.DrawWireSphere(hit.point, .03, 0xff0000, 1);
 
-
-        const randomPrefab = this.prefabs[Math.floor(Math.random() * this.prefabs.length)];
+        const i = Math.floor(Math.random() * this.prefabs.length);
+        console.log(i);
+        const randomPrefab = this.prefabs[i];
         let obj: Object3D | undefined = undefined;
 
         if (this._previouslySpawned.length > 20) {
@@ -321,17 +324,19 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
         }
 
         else obj = GameObject.instantiate(randomPrefab) as Object3D;
+        console.log(obj);
         if (obj) {
             obj.layers.set(2)
             obj.position.copy(hit.point);
             obj.rotateY(Math.random() * Math.PI * 2);
             obj.visible = true;
-            obj.scale.set(0, 0, 0);
             this._previouslySpawned.push(obj!);
             const plant = GameObject.getComponentInChildren(obj, Plant);
             if (plant) {
+                obj.scale.set(0, 0, 0);
                 plant.spawner = this;
             }
+            
         }
 
         // console.log(val);
