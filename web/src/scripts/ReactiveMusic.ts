@@ -357,9 +357,9 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
         const hit = hits[0];
         if (!hit) return;
         if (hit.object.name === "IgnoreRaycast") return;
-        if (hit.normal)
-            Gizmos.DrawDirection(hit.point, hit.normal, 0xff0000, 10);
-        if (hit.normal && hit.normal.y > .7) return;
+        // if (hit.normal)
+        //     Gizmos.DrawDirection(hit.point, hit.normal, 0xff0000, 10);
+        // if (hit.normal && hit.normal.y < .7) return;
         if (hit.distance < .4) return;
         this.spawnAtPoint(hit.point);
         // this.spawnAtPoint(new Vector3(Math.random() * 2 - 1, 0, Math.random() * 2 - 1).multiplyScalar(2));
