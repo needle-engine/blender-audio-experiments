@@ -1,5 +1,6 @@
 import { Behaviour } from "@needle-tools/engine";
 import { Vector3 } from "three";
+import { type IAudioInterface } from "./ReactiveMusic";
 
 
 
@@ -7,6 +8,8 @@ export class Plant extends Behaviour {
 
     private _originalScale!: Vector3;
     private _targetScale!: Vector3;
+
+    spawner?: IAudioInterface;
 
     awake(): void {
         this._originalScale = new Vector3(1, 1, 1);// this.gameObject.scale.clone();
@@ -21,7 +24,11 @@ export class Plant extends Behaviour {
     }
 
     update(): void {
-        this.gameObject.scale.lerp(this._targetScale, this.context.time.deltaTime * 1);
+        if (this.spawner) {
+            let vol = this.spawner.currentVolume;
+            vol *= vol;
+            this.gameObject.scale.lerp(this._targetScale, this.context.time.deltaTime * 1 * vol);
+        }
     }
 
 }
