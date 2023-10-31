@@ -99,7 +99,7 @@ export class PlantEmission extends Behaviour {
         this._offset += freq * this.context.time.deltaTime * 2;
         const factor = this._offset;
         for (const mat of this._materials) {
-            mat.emissiveIntensity = Mathf.remap(Math.sin(factor * 10), -1, 1, .1, 2);
+            mat.emissiveIntensity = Mathf.remap(Math.sin(factor * 3), -1, 1, .1, 2);
             mat.emissiveMap!.offset.x = (factor * this._speedFactor * this.speed) % 1;
             mat.emissive.set(this._tint);
         }
