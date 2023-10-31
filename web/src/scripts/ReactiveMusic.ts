@@ -1,5 +1,5 @@
-import { AudioSource, Behaviour, Collider, GameObject, Gizmos, Mathf, PhysicsMaterial, PhysicsMaterialCombine, RaycastOptions, Rigidbody, SphereCollider, serializable } from '@needle-tools/engine';
-import { AudioAnalyser, Color, Mesh, MeshStandardMaterial, Object3D, Vector3 } from 'three';
+import { AudioSource, Behaviour, Collider, GameObject, Gizmos, Mathf, ObjectUtils, PhysicsMaterial, PhysicsMaterialCombine, PrimitiveType, RaycastOptions, Rigidbody, SphereCollider, serializable } from '@needle-tools/engine';
+import { AudioAnalyser, Color, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Vector3 } from 'three';
 import { Plant } from './Plants';
 
 
@@ -263,16 +263,20 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
     @serializable(Object3D)
     prefabs: Object3D[] = [];
 
+    @serializable()
+    maxCount = 100;
+
     private _raycastOptions = new RaycastOptions();
 
     awake() {
-        console.log(this);
         if (!this.music) this.music = ReactiveMusic.instance;
         for (const pf of this.prefabs) {
             if (!pf) continue;
             pf.visible = false;
-            pf.layers.disableAll();
-            pf.layers.set(2);
+            pf.traverse((ch) => {
+                ch.layers.disableAll();
+                ch.layers.set(2);
+            });
         }
         this.worldPosition = new Vector3();
     }
@@ -305,19 +309,21 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
         // console.log(hits)
         const hit = hits[0];
         if (!hit) return;
+        if (hit.object.name === "IgnoreRaycast") return;
         if (hit.distance < .3) return;
 
         // console.log(hit.object.name);
 
         // Gizmos.DrawWireSphere(hit.point, .03, 0xff0000, 1);
 
-
-        const randomPrefab = this.prefabs[Math.floor(Math.random() * this.prefabs.length)];
+        const i = Math.floor(Math.random() * this.prefabs.length);
+        const randomPrefab = this.prefabs[i];
         let obj: Object3D | undefined = undefined;
 
-        if (this._previouslySpawned.length > 20) {
-            obj = this._previouslySpawned.shift();
-            GameObject.setActive(obj!, false);
+        if (this._previouslySpawned.length > this.maxCount) {
+            return;
+            // obj = this._previouslySpawned.shift();
+            // GameObject.setActive(obj!, false);
         }
 
         else obj = GameObject.instantiate(randomPrefab) as Object3D;
@@ -326,12 +332,13 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
             obj.position.copy(hit.point);
             obj.rotateY(Math.random() * Math.PI * 2);
             obj.visible = true;
-            obj.scale.set(0, 0, 0);
             this._previouslySpawned.push(obj!);
-            const plant = GameObject.getComponentInChildren(obj, Plant);
+            const plant = GameObject.getOrAddComponent(obj, Plant);
             if (plant) {
+                obj.scale.set(0, 0, 0);
                 plant.spawner = this;
             }
+
         }
 
         // console.log(val);
