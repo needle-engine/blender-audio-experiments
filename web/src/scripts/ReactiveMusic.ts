@@ -1,4 +1,4 @@
-import { AudioSource, Behaviour, Collider, GameObject, Mathf, PhysicsMaterial, PhysicsMaterialCombine, Rigidbody, SphereCollider, serializable } from '@needle-tools/engine';
+import { AudioSource, Behaviour, Collider, GameObject, Gizmos, Mathf, PhysicsMaterial, PhysicsMaterialCombine, RaycastOptions, Rigidbody, SphereCollider, serializable } from '@needle-tools/engine';
 import { AudioAnalyser, Color, Mesh, MeshStandardMaterial, Object3D, Vector3 } from 'three';
 
 
@@ -18,8 +18,17 @@ export class ReactiveMusic extends Behaviour {
     getValueNormalized(index: number) {
         return this.getValue(index) / 255;
     }
-    getValueNormalized01(index: number) {
-        const i = Math.floor(index * this._frequencies);
+    getValueNormalized01(indexOrFrom: number, to?: number) {
+        const i = Math.floor(indexOrFrom * this._frequencies);
+        if (to !== undefined && to > indexOrFrom) {
+            const i1 = Math.floor(to * this._frequencies);
+            let sum = 0;
+            for (let k = i; k < i1; k++) {
+                sum += (this.getValue(k) / 255);
+            }
+            const steps = i1 - i;
+            return sum / steps;
+        }
         return this.getValue(i) / 255;
     }
     getAverageFrequency() {
@@ -40,6 +49,7 @@ export class ReactiveMusic extends Behaviour {
 
     awake() {
         AudioSource.registerWaitForAllowAudio(() => {
+            // console.log(this.audioSource)
             this.analyser = new AudioAnalyser(this.audioSource.Sound!, this.array.length);
         })
     }
@@ -236,20 +246,71 @@ export class ReactiveAttraction extends Behaviour {
 }
 
 
+function randomBetween(min: number, max: number) {
+    return min + Math.random() * (max - min);
+}
 
 export class ReactiveSpawnRaycast extends Behaviour {
 
     @serializable(ReactiveMusic)
     music!: ReactiveMusic;
 
+    @serializable(Object3D)
+    prefabs: Object3D[] = [];
+
+    private _raycastOptions = new RaycastOptions();
+
     awake() {
-        console.log(this.music)
         if (!this.music) this.music = ReactiveMusic.instance;
+        for (const pf of this.prefabs) {
+            pf.visible = false;
+        }
     }
 
-    update(): void {
-        const val = this.music.getAverageFrequencyNormalized();
-        console.log(val);
+    private _lastSpawnTime = 0;
+    private _previouslySpawned: Object3D[] = [];
+
+    earlyUpdate(): void {
+        if (this.context.time.time - this._lastSpawnTime < .2) return;
+        // if (this._previouslySpawned.length >= 1) return;
+
+        const val = this.music.getValueNormalized01(0, .3);
+
+        if (val < .25) return;
+
+        this._lastSpawnTime = this.context.time.time;
+
+        const width = this.context.domWidth;
+        const height = this.context.domHeight;
+        const sx = width * .5 + randomBetween(-width * .5, width * .5);
+        const sy = height * .5 + randomBetween(-height * .5, height * .5);
+        const ray = this.context.mainCameraComponent!.screenPointToRay(sx, sy);
+        Gizmos.DrawRay(ray.origin, ray.direction, 0xff0000, 1);
+        const hits = this.context.physics.raycastFromRay(ray);
+        // console.log(hits)
+        const hit = hits[0];
+        if (!hit) return;
+
+        Gizmos.DrawWireSphere(hit.point, .1, 0xff0000, 1);
+
+
+        const randomPrefab = this.prefabs[Math.floor(Math.random() * this.prefabs.length)];
+        let obj: Object3D | undefined = undefined;
+        if (this._previouslySpawned.length > 20) {
+            obj = this._previouslySpawned.shift();
+        }
+        else obj = GameObject.instantiate(randomPrefab) as Object3D;
+        obj?.layers.set(2)
+        obj?.position.copy(hit.point);
+        obj!.visible = true;
+        obj?.scale.set(0, 0, 0);
+        this._previouslySpawned.push(obj!);
+
+        // console.log(val);
+        // for (const prefab of this.prefabs) {
+        //     prefab.position.set(0, 0, 0);
+        //     prefab.scale.lerp(new Vector3(val, val, val), .1);
+        // }
 
     }
 
