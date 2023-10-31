@@ -1,6 +1,7 @@
 import { AudioSource, Behaviour, Collider, GameObject, Mathf, PhysicsMaterial, PhysicsMaterialCombine, Rigidbody, SphereCollider, serializable } from '@needle-tools/engine';
 import { AudioAnalyser, Color, Mesh, MeshStandardMaterial, Object3D, Vector3 } from 'three';
 
+
 export class ReactiveMusic extends Behaviour {
 
     static instance: ReactiveMusic;
@@ -8,12 +9,25 @@ export class ReactiveMusic extends Behaviour {
     @serializable(AudioSource)
     audioSource!: AudioSource;
 
-    getValue(index: number) {
+    private _frequencies = 32;
+
+    private getValue(index: number) {
         if (index < 0 || index >= this.array.length) return 0;
         return this.array[index];
     }
-    getValue01(index: number) {
+    getValueNormalized(index: number) {
         return this.getValue(index) / 255;
+    }
+    getValueNormalized01(index: number) {
+        const i = Math.floor(index * this._frequencies);
+        return this.getValue(i) / 255;
+    }
+    getAverageFrequency() {
+        return this.analyser?.getAverageFrequency();
+    }
+    getAverageFrequencyNormalized() {
+        if (!this.analyser) return 0;
+        return this.analyser.getAverageFrequency() / 255;
     }
 
     constructor() {
@@ -21,7 +35,7 @@ export class ReactiveMusic extends Behaviour {
         ReactiveMusic.instance = this;
     }
 
-    private array: Uint8Array = new Uint8Array(32);
+    private array: Uint8Array = new Uint8Array(this._frequencies);
     private analyser?: AudioAnalyser;
 
     awake() {
@@ -70,7 +84,7 @@ export class ReactiveSpawn extends Behaviour {
             return;
         }
         if (!this.prefab) return;
-        const val = ReactiveMusic.instance.getValue(1);
+        const val = ReactiveMusic.instance.getValueNormalized(1);
         this._lastValue = val;
         if (val > 180) {
             this._delay = Mathf.remap(val, 100, 255, .5, .05);
@@ -102,7 +116,9 @@ export class ReactiveSpawn extends Behaviour {
 
 export class ReactiveSphere extends Behaviour {
 
+    @serializable()
     index: number = 0;
+    @serializable()
     factor: number = .1;
 
     start() {
@@ -117,7 +133,7 @@ export class ReactiveSphere extends Behaviour {
     }
 
     update() {
-        const val = ReactiveMusic.instance.getValue(this.index);
+        const val = ReactiveMusic.instance.getValueNormalized(this.index);
         let xyz = val * this.factor * .05;
         xyz *= xyz;
         if (xyz <= 0) return;
@@ -164,23 +180,22 @@ export class ReactiveAttraction extends Behaviour {
     target?: Object3D;
 
     @serializable()
-    dragFactor : number = 20;
+    dragFactor: number = 20;
 
     @serializable()
-    massFactor : number = 5;
+    massFactor: number = 5;
 
     @serializable()
-    bouncyNess : number = .5;
+    bouncyNess: number = .5;
 
     private _rbs: Rigidbody[] = [];
 
     start() {
-        const colPhysicsMaterial : PhysicsMaterial = {
+        const colPhysicsMaterial: PhysicsMaterial = {
             bounceCombine: PhysicsMaterialCombine.Maximum,
             bounciness: this.bouncyNess,
             frictionCombine: PhysicsMaterialCombine.Maximum,
             dynamicFriction: .1,
-            staticFriction: .1,
         }
         for (const ch of this.gameObject.children) {
             const rb = GameObject.getOrAddComponent(ch, Rigidbody);
@@ -196,7 +211,7 @@ export class ReactiveAttraction extends Behaviour {
 
     private _temp = new Vector3();
     update(): void {
-        const val = ReactiveMusic.instance.getValue01(4);
+        const val = ReactiveMusic.instance.getValueNormalized(4);
         if (val > .53) {
             for (const rb of this._rbs) {
                 rb.drag = .5;
@@ -216,6 +231,26 @@ export class ReactiveAttraction extends Behaviour {
         else if (val <= .3) {
             for (const rb of this._rbs) rb.drag += this.dragFactor * this.context.time.deltaTime;
         }
+    }
+
+}
+
+
+
+export class ReactiveSpawnRaycast extends Behaviour {
+
+    @serializable(ReactiveMusic)
+    music!: ReactiveMusic;
+
+    awake() {
+        console.log(this.music)
+        if (!this.music) this.music = ReactiveMusic.instance;
+    }
+
+    update(): void {
+        const val = this.music.getAverageFrequencyNormalized();
+        console.log(val);
+
     }
 
 }
