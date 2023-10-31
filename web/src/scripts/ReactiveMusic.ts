@@ -1,5 +1,5 @@
-import { AudioSource, Behaviour, Collider, GameObject, Gizmos, Mathf, ObjectUtils, PhysicsMaterial, PhysicsMaterialCombine, PrimitiveType, RaycastOptions, Rigidbody, SphereCollider, WebXRPlaneTracking, serializable, showBalloonMessage } from '@needle-tools/engine';
-import { AudioAnalyser, Color, Intersection, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Vector3 } from 'three';
+import { AudioSource, Behaviour, Collider, GameObject, Gizmos, Mathf, ObjectUtils, PhysicsMaterial, PhysicsMaterialCombine, PrimitiveType, RaycastOptions, Rigidbody, SphereCollider, WebXRPlaneTracking, getWorldPosition, serializable, showBalloonMessage } from '@needle-tools/engine';
+import { AudioAnalyser, Color, Euler, Intersection, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Quaternion, Ray, Vector3 } from 'three';
 import { Plant } from './Plants';
 
 
@@ -312,10 +312,22 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
 
         const width = this.context.domWidth;
         const height = this.context.domHeight;
-        const sx = width * .5 + randomBetween(-width * .5, width * .5);
-        const sy = height * .5 + randomBetween(-height * .5, height * .5);
-        const ray = this.context.mainCameraComponent!.screenPointToRay(sx, sy);
-        // Gizmos.DrawRay(ray.origin, ray.direction, 0xff0000, 1);
+        let ray: Ray | undefined;
+
+        if (this.context.isInXR) {
+            const cam = this.context.mainCamera;
+            if (!cam) return;
+            const dir = cam.getWorldDirection(new Vector3());
+            const randomRotation = new Euler(Mathf.random(-.1, .1), Mathf.random(-.1, .1), Mathf.random(-.1, .1));
+            dir.applyEuler(randomRotation);
+            ray = new Ray(getWorldPosition(cam), dir.normalize());
+        }
+        else {
+            const sx = width * .5 + randomBetween(-width * .5, width * .5);
+            const sy = height * .5 + randomBetween(-height * .5, height * .5);
+            ray = this.context.mainCameraComponent!.screenPointToRay(sx, sy);
+        }
+        // Gizmos.DrawRay(ray.origin, ray.direction, 0xffff00, 5)
 
         let hits: Intersection[] | undefined;
 
@@ -338,12 +350,17 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
             hits = this.context.physics.raycastFromRay(ray);
         }
 
-        if (!hits) return;
+        if (!hits) {
+            return;
+        }
 
         const hit = hits[0];
         if (!hit) return;
         if (hit.object.name === "IgnoreRaycast") return;
-        if (hit.distance < .6) return;
+        if (hit.normal)
+            Gizmos.DrawDirection(hit.point, hit.normal, 0xff0000, 10);
+        if (hit.normal && hit.normal.y > .7) return;
+        if (hit.distance < .4) return;
         this.spawnAtPoint(hit.point);
         // this.spawnAtPoint(new Vector3(Math.random() * 2 - 1, 0, Math.random() * 2 - 1).multiplyScalar(2));
         // return;

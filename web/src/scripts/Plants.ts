@@ -1,11 +1,13 @@
 import { Behaviour, Mathf, ObjectUtils, PrimitiveType, getParam, serializable } from "@needle-tools/engine";
-import { Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Vector3 } from "three";
+import { Color, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Vector3 } from "three";
 import { ReactiveSpawnRaycast, type IAudioInterface } from "./ReactiveMusic";
 
 let showColliders = false;
 const growFast = getParam("growfast");
 
 export class Plant extends Behaviour {
+    @serializable()
+    speed: number = 1;
 
     private _originalScale!: Vector3;
     private _targetScale!: Vector3;
@@ -49,7 +51,7 @@ export class Plant extends Behaviour {
             let vol = this.spawner.currentVolume;
             if (!growFast)
                 vol = Math.pow(vol, 5);
-            this.gameObject.scale.lerp(this._targetScale, this.context.time.deltaTime * 8 * vol);
+            this.gameObject.scale.lerp(this._targetScale, this.context.time.deltaTime * 8 * vol * this.speed);
         }
 
         if (this._colliderCube) {
@@ -62,12 +64,15 @@ export class Plant extends Behaviour {
 
 export class PlantEmission extends Behaviour {
 
+    @serializable()
+    speed: number = 1;
 
     private _offset: number = 0;
     private spawner?: ReactiveSpawnRaycast;
 
     private _materials: MeshStandardMaterial[] = [];
     private _speedFactor: number = 1;
+    private _tint: Color = new Color();
 
     onEnable(): void {
         this._offset = Math.random() * 100;
@@ -83,7 +88,9 @@ export class PlantEmission extends Behaviour {
                 }
             }
         });
-        console.log(this);
+        // this._tint = new Color();
+        this._tint = this._materials[0]!.emissive.clone();
+        this._tint.offsetHSL(Mathf.random(-.05, .05), 0, 0);
     }
 
     update(): void {
@@ -93,7 +100,8 @@ export class PlantEmission extends Behaviour {
         const factor = this._offset;
         for (const mat of this._materials) {
             mat.emissiveIntensity = Mathf.remap(Math.sin(factor * 10), -1, 1, .1, 2);
-            mat.emissiveMap!.offset.x = factor * this._speedFactor;
+            mat.emissiveMap!.offset.x = (factor * this._speedFactor * this.speed) % 1;
+            mat.emissive.set(this._tint);
         }
     }
 
@@ -105,9 +113,9 @@ export class StoneBehaviour extends Behaviour {
     private spawner?: ReactiveSpawnRaycast;
 
     @serializable()
-    scaleFactorMin: number = 1;
+    scaleFactorMin: number = .7;
     @serializable()
-    scaleFactorMax: number = 2;
+    scaleFactorMax: number = 1.5;
 
     private _targetScale!: Vector3;
 
@@ -116,15 +124,15 @@ export class StoneBehaviour extends Behaviour {
         this.spawner = this.gameObject.getComponentInParent(ReactiveSpawnRaycast)!;
         this._targetScale = new Vector3(1,1,1).multiplyScalar(Mathf.random(this.scaleFactorMin, this.scaleFactorMax));
         this.gameObject.scale.set(0, 0, 0);
-        this.gameObject.rotation.x = Mathf.random(-.1, .1);
-        this.gameObject.rotation.z = Mathf.random(-.1, .1);
+        // this.gameObject.rotation.x = Mathf.random(-.1, .1);
+        // this.gameObject.rotation.z = Mathf.random(-.1, .1);
     }
 
     update(): void {
         if (!this.spawner) return;
         const freq = Math.pow(this.spawner!.currentVolume, 3);
-        this.gameObject.scale.lerp(this._targetScale, this.context.time.deltaTime * freq);
-        this.gameObject.rotateY(freq * this.context.time.deltaTime * 5 + this.context.time.deltaTime * .1);
+        this.gameObject.scale.lerp(this._targetScale, this.context.time.deltaTime * freq * 20);
+        // this.gameObject.rotateY(freq * this.context.time.deltaTime * 5 + this.context.time.deltaTime * .1);
     }
 
 }

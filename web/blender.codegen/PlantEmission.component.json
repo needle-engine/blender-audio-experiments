@@ -1,1 +1,1 @@
-{    "PlantEmission": {        "onEnable": {            "type": "fn"        },        "update": {            "type": "fn"        }    }}
+{    "PlantEmission": {        "speed": {            "type": "float",            "value": 1        },        "onEnable": {            "type": "fn"        },        "update": {            "type": "fn"        }    }}
