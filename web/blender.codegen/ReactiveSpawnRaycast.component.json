@@ -1,1 +1,1 @@
-{    "ReactiveSpawnRaycast": {        "music": {            "type": "reactivemusic"        },        "awake": {            "type": "fn"        },        "update": {            "type": "fn"        }    }}
+{    "ReactiveSpawnRaycast": {        "music": {            "type": "reactivemusic"        },        "prefabs": {            "type": "obj",            "value": []        },        "awake": {            "type": "fn"        },        "earlyUpdate": {            "type": "fn"        }    }}
