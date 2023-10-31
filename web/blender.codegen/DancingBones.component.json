@@ -1,0 +1,1 @@
+{    "DancingBones": {        "fixEnds": {            "type": "bool",            "value": false        },        "onEnable": {            "type": "fn"        },        "update": {            "type": "fn"        }    }}

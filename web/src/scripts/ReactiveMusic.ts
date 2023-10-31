@@ -1,5 +1,5 @@
-import { AudioSource, Behaviour, Collider, GameObject, Gizmos, Mathf, ObjectUtils, PhysicsMaterial, PhysicsMaterialCombine, PrimitiveType, RaycastOptions, Rigidbody, SphereCollider, serializable } from '@needle-tools/engine';
-import { AudioAnalyser, Color, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Vector3 } from 'three';
+import { AudioSource, Behaviour, Collider, GameObject, Gizmos, Mathf, ObjectUtils, PhysicsMaterial, PhysicsMaterialCombine, PrimitiveType, RaycastOptions, Rigidbody, SphereCollider, WebXRPlaneTracking, serializable, showBalloonMessage } from '@needle-tools/engine';
+import { AudioAnalyser, Color, Intersection, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Vector3 } from 'three';
 import { Plant } from './Plants';
 
 
@@ -267,8 +267,11 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
     maxCount = 100;
 
     private _raycastOptions = new RaycastOptions();
+    private _planeTracking!: WebXRPlaneTracking;
 
     awake() {
+        this._planeTracking = GameObject.findObjectOfType(WebXRPlaneTracking)!;
+
         if (!this.music) this.music = ReactiveMusic.instance;
         for (const pf of this.prefabs) {
             if (!pf) continue;
@@ -288,6 +291,8 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
         return this.music.getValueNormalized01(0, .3);
     }
 
+    private _trackedMeshes: Mesh[] = [];
+
     earlyUpdate(): void {
         if (this.context.time.time - this._lastSpawnTime < .5) return;
         // if (this._previouslySpawned.length >= 1) return;
@@ -305,12 +310,38 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
         const ray = this.context.mainCameraComponent!.screenPointToRay(sx, sy);
         // Gizmos.DrawRay(ray.origin, ray.direction, 0xff0000, 1);
 
-        const hits = this.context.physics.raycastFromRay(ray);
-        // console.log(hits)
+        let hits: Intersection[] | undefined;
+
+        if (this.context.isInXR) {
+            this._trackedMeshes.length = 0;
+            for (const tracked of this.foreachTrackedPlaneMesh()) {
+                this._trackedMeshes.push(tracked);
+            }
+            showBalloonMessage("Tracked meshes: " + this._trackedMeshes.length);
+            const opts = this._raycastOptions;
+            opts.targets = this._trackedMeshes;
+            hits = this.context.physics.raycastFromRay(ray, opts);
+            // for (const tracked of this.foreachTrackedPlaneMesh()) {
+            //     tracked.layers.disableAll();
+            //     tracked.layers.set(2);
+            // }
+        }
+        else {
+            hits = this.context.physics.raycastFromRay(ray);
+        }
+
+        if (!hits) return;
+
         const hit = hits[0];
         if (!hit) return;
         if (hit.object.name === "IgnoreRaycast") return;
         if (hit.distance < .3) return;
+        this.spawnAtPoint(hit.point);
+        // this.spawnAtPoint(new Vector3(Math.random() * 2 - 1, 0, Math.random() * 2 - 1).multiplyScalar(2));
+        // return;
+    }
+
+    private spawnAtPoint(point: Vector3) {
 
         // console.log(hit.object.name);
 
@@ -325,14 +356,14 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
             // obj = this._previouslySpawned.shift();
             // GameObject.setActive(obj!, false);
         }
-
-        else obj = GameObject.instantiate(randomPrefab) as Object3D;
+        else obj = GameObject.instantiate(randomPrefab, { parent: this.gameObject }) as Object3D;
         if (obj) {
             obj.layers.set(2)
-            obj.position.copy(hit.point);
+            obj.position.copy(point);
             obj.rotateY(Math.random() * Math.PI * 2);
             obj.visible = true;
             this._previouslySpawned.push(obj!);
+            console.log(this._previouslySpawned.length)
             const plant = GameObject.getOrAddComponent(obj, Plant);
             if (plant) {
                 obj.scale.set(0, 0, 0);
@@ -341,12 +372,23 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
 
         }
 
-        // console.log(val);
-        // for (const prefab of this.prefabs) {
-        //     prefab.position.set(0, 0, 0);
-        //     prefab.scale.lerp(new Vector3(val, val, val), .1);
-        // }
+    }
 
+    private *foreachTrackedPlaneMesh() {
+        if (!this._planeTracking) {
+            console.error("No plane tracking component found");
+            return;
+        }
+        for (const tracked of this._planeTracking.trackedMeshes) {
+            console.log(tracked);
+            if (tracked.mesh instanceof Mesh)
+                yield tracked.mesh as Mesh;
+        }
+        for (const tracked of this._planeTracking.trackedPlanes) {
+            console.log(tracked);
+            if (tracked.mesh instanceof Mesh)
+                yield tracked.mesh as Mesh;
+        }
     }
 
 }
