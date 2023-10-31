@@ -1,1 +1,0 @@
-{    "StoneRotator": {        "onEnable": {            "type": "fn"        },        "update": {            "type": "fn"        }    }}
