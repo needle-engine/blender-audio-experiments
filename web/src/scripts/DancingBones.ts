@@ -17,6 +17,8 @@ export class DancingBones extends Behaviour {
             if (child instanceof SkinnedMesh) {
                 if (!this.skinnedMeshes) this.skinnedMeshes = [];
                 this.skinnedMeshes.push(child);
+                child.layers.disableAll();
+                child.layers.enable(2);
             }
         });
         this.spawner = this.gameObject.getComponentInParent(ReactiveSpawnRaycast)!;
@@ -27,8 +29,9 @@ export class DancingBones extends Behaviour {
 
     update(): void {
         if (!this.spawner) return;
-        const freq = Math.pow(this.spawner!.currentVolume, 5);
-        this._offset += freq * this.context.time.deltaTime * 120;
+        const vol = this.spawner!.currentVolume;
+        const freq = Math.pow(vol, 3);
+        this._offset += freq * this.context.time.deltaTime * 10;
         const factor = this._offset;
 
         for (const mesh of this.skinnedMeshes) {
@@ -39,9 +42,9 @@ export class DancingBones extends Behaviour {
                         continue;
                     }
                 }
-                bone.rotation.x = Math.sin(factor * .5 + bone.position.x) * .1;
-                bone.rotation.y = Math.sin(factor * .5 + bone.position.y) * .3;
-                bone.rotation.z = Math.sin(factor * .5 + bone.position.z) * .1;
+                bone.rotation.x = Math.sin(factor * .5) * .1 * Math.sin(i * .1);
+                bone.rotation.y = Math.sin(factor * .5) * .3;
+                bone.rotation.z = Math.cos(factor * .5) * .1 * Math.cos(i * .1);
             }
         }
     }

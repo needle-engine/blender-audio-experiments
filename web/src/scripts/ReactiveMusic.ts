@@ -291,7 +291,7 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
         return this.music.getValueNormalized01(0, .3);
     }
 
-    private _trackedMeshes: Mesh[] = [];
+    private _objects: Mesh[] = [];
 
     earlyUpdate(): void {
         if (this.context.time.time - this._lastSpawnTime < .5) return;
@@ -300,6 +300,13 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
         const val = this.currentVolume;
 
         if (val < .25) return;
+
+        if (this._previouslySpawned.length > this.maxCount) {
+            return;
+            // obj = this._previouslySpawned.shift();
+            // GameObject.setActive(obj!, false);
+        }
+
 
         this._lastSpawnTime = this.context.time.time;
 
@@ -312,21 +319,22 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
 
         let hits: Intersection[] | undefined;
 
-        if (this.context.isInXR) {
-            this._trackedMeshes.length = 0;
-            for (const tracked of this.foreachTrackedPlaneMesh()) {
-                this._trackedMeshes.push(tracked);
-            }
-            showBalloonMessage("Tracked meshes: " + this._trackedMeshes.length);
-            const opts = this._raycastOptions;
-            opts.targets = this._trackedMeshes;
-            hits = this.context.physics.raycastFromRay(ray, opts);
-            // for (const tracked of this.foreachTrackedPlaneMesh()) {
-            //     tracked.layers.disableAll();
-            //     tracked.layers.set(2);
-            // }
-        }
-        else {
+        // if (this.context.isInXR) {
+        //     this._objects.length = 0;
+        //     for (const tracked of this.foreachTrackedPlaneMesh()) {
+        //         this._objects.push(tracked);
+        //     }
+        //     showBalloonMessage("Tracked meshes: " + this._objects.length);
+        //     const opts = this._raycastOptions;
+        //     opts.targets = this._objects;
+        //     hits = this.context.physics.raycastFromRay(ray, opts);
+        //     // for (const tracked of this.foreachTrackedPlaneMesh()) {
+        //     //     tracked.layers.disableAll();
+        //     //     tracked.layers.set(2);
+        //     // }
+        // }
+        // else 
+        {
             hits = this.context.physics.raycastFromRay(ray);
         }
 
@@ -335,7 +343,7 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
         const hit = hits[0];
         if (!hit) return;
         if (hit.object.name === "IgnoreRaycast") return;
-        if (hit.distance < .3) return;
+        if (hit.distance < .6) return;
         this.spawnAtPoint(hit.point);
         // this.spawnAtPoint(new Vector3(Math.random() * 2 - 1, 0, Math.random() * 2 - 1).multiplyScalar(2));
         // return;
@@ -351,25 +359,26 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
         const randomPrefab = this.prefabs[i];
         let obj: Object3D | undefined = undefined;
 
-        if (this._previouslySpawned.length > this.maxCount) {
-            return;
-            // obj = this._previouslySpawned.shift();
-            // GameObject.setActive(obj!, false);
-        }
-        else obj = GameObject.instantiate(randomPrefab, { parent: this.gameObject }) as Object3D;
+        obj = GameObject.instantiate(randomPrefab, { parent: this.gameObject }) as Object3D;
         if (obj) {
             obj.layers.set(2)
             obj.position.copy(point);
             obj.rotateY(Math.random() * Math.PI * 2);
             obj.visible = true;
             this._previouslySpawned.push(obj!);
-            console.log(this._previouslySpawned.length)
-            const plant = GameObject.getOrAddComponent(obj, Plant);
+            obj.scale.set(0, 0, 0);
+
+            const plant = GameObject.getComponent(obj, Plant);
             if (plant) {
-                obj.scale.set(0, 0, 0);
                 plant.spawner = this;
             }
 
+            obj.traverseVisible((child) => {
+                if (child instanceof Mesh) {
+                    child.layers.disableAll();
+                    child.layers.enable(2);
+                }
+            });
         }
 
     }
@@ -380,12 +389,10 @@ export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
             return;
         }
         for (const tracked of this._planeTracking.trackedMeshes) {
-            console.log(tracked);
             if (tracked.mesh instanceof Mesh)
                 yield tracked.mesh as Mesh;
         }
         for (const tracked of this._planeTracking.trackedPlanes) {
-            console.log(tracked);
             if (tracked.mesh instanceof Mesh)
                 yield tracked.mesh as Mesh;
         }
