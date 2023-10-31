@@ -1,12 +1,15 @@
 import { AudioSource, Behaviour, Collider, GameObject, Mathf, PhysicsMaterial, PhysicsMaterialCombine, Rigidbody, SphereCollider, serializable } from '@needle-tools/engine';
 import { AudioAnalyser, Color, Mesh, MeshStandardMaterial, Object3D, Vector3 } from 'three';
 
+
 export class ReactiveMusic extends Behaviour {
 
     static instance: ReactiveMusic;
 
     @serializable(AudioSource)
     audioSource!: AudioSource;
+
+    private _frequencies = 32;
 
     private getValue(index: number) {
         if (index < 0 || index >= this.array.length) return 0;
@@ -15,8 +18,16 @@ export class ReactiveMusic extends Behaviour {
     getValueNormalized(index: number) {
         return this.getValue(index) / 255;
     }
+    getValueNormalized01(index: number) {
+        const i = Math.floor(index * this._frequencies);
+        return this.getValue(i) / 255;
+    }
     getAverageFrequency() {
         return this.analyser?.getAverageFrequency();
+    }
+    getAverageFrequencyNormalized() {
+        if (!this.analyser) return 0;
+        return this.analyser.getAverageFrequency() / 255;
     }
 
     constructor() {
@@ -24,7 +35,7 @@ export class ReactiveMusic extends Behaviour {
         ReactiveMusic.instance = this;
     }
 
-    private array: Uint8Array = new Uint8Array(32);
+    private array: Uint8Array = new Uint8Array(this._frequencies);
     private analyser?: AudioAnalyser;
 
     awake() {
@@ -220,6 +231,26 @@ export class ReactiveAttraction extends Behaviour {
         else if (val <= .3) {
             for (const rb of this._rbs) rb.drag += this.dragFactor * this.context.time.deltaTime;
         }
+    }
+
+}
+
+
+
+export class ReactiveSpawnRaycast extends Behaviour {
+
+    @serializable(ReactiveMusic)
+    music!: ReactiveMusic;
+
+    awake() {
+        console.log(this.music)
+        if (!this.music) this.music = ReactiveMusic.instance;
+    }
+
+    update(): void {
+        const val = this.music.getAverageFrequencyNormalized();
+        console.log(val);
+
     }
 
 }
