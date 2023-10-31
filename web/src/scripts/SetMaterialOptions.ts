@@ -9,9 +9,14 @@ export class SetMaterialOptions extends Behaviour {
         if (this.gameObject.material)
         {
             // @ts-ignore
-            this.gameObject.material.blending = AdditiveBlending;
-            this.gameObject.material.depthWrite = false;
-            this.gameObject.material.transparent = true;
+            const mat = this.gameObject.material;
+            mat.blending = AdditiveBlending;
+            mat.depthWrite = false;
+            mat.transparent = true;
+            mat.opacity = 0.2;
+
+            // HACK marcel doesn't like them :(
+            // this.gameObject.visible = false;
         }
     }
 }
