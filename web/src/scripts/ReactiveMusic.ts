@@ -1,5 +1,6 @@
 import { AudioSource, Behaviour, Collider, GameObject, Gizmos, Mathf, PhysicsMaterial, PhysicsMaterialCombine, RaycastOptions, Rigidbody, SphereCollider, serializable } from '@needle-tools/engine';
 import { AudioAnalyser, Color, Mesh, MeshStandardMaterial, Object3D, Vector3 } from 'three';
+import { Plant } from './Plants';
 
 
 export class ReactiveMusic extends Behaviour {
@@ -250,7 +251,11 @@ function randomBetween(min: number, max: number) {
     return min + Math.random() * (max - min);
 }
 
-export class ReactiveSpawnRaycast extends Behaviour {
+export interface IAudioInterface {
+    get currentVolume(): number;
+}
+
+export class ReactiveSpawnRaycast extends Behaviour implements IAudioInterface {
 
     @serializable(ReactiveMusic)
     music!: ReactiveMusic;
@@ -261,20 +266,29 @@ export class ReactiveSpawnRaycast extends Behaviour {
     private _raycastOptions = new RaycastOptions();
 
     awake() {
+        console.log(this);
         if (!this.music) this.music = ReactiveMusic.instance;
         for (const pf of this.prefabs) {
+            if (!pf) continue;
             pf.visible = false;
+            pf.layers.disableAll();
+            pf.layers.set(2);
         }
+        this.worldPosition = new Vector3();
     }
 
     private _lastSpawnTime = 0;
     private _previouslySpawned: Object3D[] = [];
 
+    get currentVolume() {
+        return this.music.getValueNormalized01(0, .3);
+    }
+
     earlyUpdate(): void {
-        if (this.context.time.time - this._lastSpawnTime < .2) return;
+        if (this.context.time.time - this._lastSpawnTime < .5) return;
         // if (this._previouslySpawned.length >= 1) return;
 
-        const val = this.music.getValueNormalized01(0, .3);
+        const val = this.currentVolume;
 
         if (val < .25) return;
 
@@ -285,26 +299,40 @@ export class ReactiveSpawnRaycast extends Behaviour {
         const sx = width * .5 + randomBetween(-width * .5, width * .5);
         const sy = height * .5 + randomBetween(-height * .5, height * .5);
         const ray = this.context.mainCameraComponent!.screenPointToRay(sx, sy);
-        Gizmos.DrawRay(ray.origin, ray.direction, 0xff0000, 1);
+        // Gizmos.DrawRay(ray.origin, ray.direction, 0xff0000, 1);
+
         const hits = this.context.physics.raycastFromRay(ray);
         // console.log(hits)
         const hit = hits[0];
         if (!hit) return;
+        if (hit.distance < .3) return;
 
-        Gizmos.DrawWireSphere(hit.point, .1, 0xff0000, 1);
+        // console.log(hit.object.name);
+
+        // Gizmos.DrawWireSphere(hit.point, .03, 0xff0000, 1);
 
 
         const randomPrefab = this.prefabs[Math.floor(Math.random() * this.prefabs.length)];
         let obj: Object3D | undefined = undefined;
+
         if (this._previouslySpawned.length > 20) {
             obj = this._previouslySpawned.shift();
+            GameObject.setActive(obj!, false);
         }
+
         else obj = GameObject.instantiate(randomPrefab) as Object3D;
-        obj?.layers.set(2)
-        obj?.position.copy(hit.point);
-        obj!.visible = true;
-        obj?.scale.set(0, 0, 0);
-        this._previouslySpawned.push(obj!);
+        if (obj) {
+            obj.layers.set(2)
+            obj.position.copy(hit.point);
+            obj.rotateY(Math.random() * Math.PI * 2);
+            obj.visible = true;
+            obj.scale.set(0, 0, 0);
+            this._previouslySpawned.push(obj!);
+            const plant = GameObject.getComponentInChildren(obj, Plant);
+            if (plant) {
+                plant.spawner = this;
+            }
+        }
 
         // console.log(val);
         // for (const prefab of this.prefabs) {
